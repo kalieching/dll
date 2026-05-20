@@ -29,7 +29,9 @@ The art of classical control is tuning Kp, Kd, Ki.
 """
 
 import numpy as np
-from pid import PIDController
+from controllers.pid import PIDController
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 # Physics
 class CartPoleEnv:
@@ -107,9 +109,12 @@ def run_episode(env, controller, max_steps=500, render=True):
         'reward': [],
     }
 
+    if render:
+        fig, axes = setup_render()
+
     for step in range(max_steps):
         x, x_dot, theta, theta_dot = state
-        force = controller.compte(theta, theta_dot)
+        force = controller.compute(theta, theta_dot)
         state, reward, terminated = env.step(force)
 
         history['x'].append(x)
@@ -119,11 +124,108 @@ def run_episode(env, controller, max_steps=500, render=True):
         history['force'].append(force)
         history['reward'].append(reward)
 
+        if render:
+            visualization(axes, state, force, step)
 
         if terminated:
             break
+
     return history
 
-# Visualize
-def visualization():
-    pass
+def setup_render():
+    """Create the matplotlib figure for animation."""
+    plt.ion()   # interactive mode — updates without blocking
+    fig, axes = plt.subplots(2, 1, figsize=(8, 7))
+    fig.tight_layout(pad=3.0)
+    return fig, axes
+
+def visualization(axes, state, force, step):
+    """Draw one frame of the simulation."""
+    x, x_dot, theta, theta_dot = state
+
+    ax_cart, ax_plot = axes
+
+    # Cart-pole drawing
+    ax_cart.cla()
+    ax_cart.set_xlim(-3, 3)
+    ax_cart.set_ylim(-0.5, 1.5)
+    ax_cart.set_aspect('equal')
+    ax_cart.axhline(0, color='gray', linewidth=1)       # track
+    ax_cart.axvline(2.4,  color='red', linewidth=1, linestyle='--')   # boundary
+    ax_cart.axvline(-2.4, color='red', linewidth=1, linestyle='--')
+
+    # Cart
+    cart = patches.FancyBboxPatch(
+        (x - 0.3, -0.15), 0.6, 0.3,
+        boxstyle="round,pad=0.02",
+        linewidth=1.5, edgecolor='steelblue', facecolor='lightsteelblue'
+    )
+    ax_cart.add_patch(cart)
+
+    # Pole
+    pole_len = 1.0   # visual length (2 * HALF_LEN)
+    pole_x = x + pole_len * np.sin(theta)
+    pole_y = pole_len * np.cos(theta)
+    ax_cart.plot([x, pole_x], [0, pole_y],
+                 color='darkorange', linewidth=4, solid_capstyle='round')
+    ax_cart.plot(pole_x, pole_y, 'o', color='darkorange', markersize=8)
+
+    # Force arrow
+    if abs(force) > 0.1:
+        ax_cart.annotate('', xy=(x + np.sign(force)*0.6, 0),
+                         xytext=(x, 0),
+                         arrowprops=dict(arrowstyle='->', color='green', lw=2))
+
+    ax_cart.set_title(f'Step {step}   θ={np.degrees(theta):.1f}°   '
+                      f'x={x:.2f}m   F={force:.1f}N')
+    ax_cart.set_xlabel('Position (m)')
+
+    # Time series of pole angle
+    ax_plot.cla()
+    ax_plot.set_title('Pole angle over time')
+    ax_plot.set_xlabel('Step')
+    ax_plot.set_ylabel('Angle (degrees)')
+    ax_plot.axhline(0,    color='gray',  linewidth=0.8, linestyle='--')
+    ax_plot.axhline(12,   color='red',   linewidth=0.8, linestyle='--', label='limit')
+    ax_plot.axhline(-12,  color='red',   linewidth=0.8, linestyle='--')
+    ax_plot.set_ylim(-20, 20)
+
+    plt.pause(0.001)   # tiny pause lets matplotlib redraw
+
+
+def plot_history(history):
+    """
+    Plot full episode statistics.
+    """
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    fig.suptitle('Episode Summary', fontsize=13)
+
+    steps = range(len(history['theta']))
+
+    axes[0].plot(steps, history['theta'], color='darkorange')
+    axes[0].axhline(12,  color='red', linestyle='--', linewidth=0.8)
+    axes[0].axhline(-12, color='red', linestyle='--', linewidth=0.8)
+    axes[0].set_ylabel('Pole angle (°)')
+    axes[0].set_title('Pole angle — red dashes are termination limits')
+
+    axes[1].plot(steps, history['x'], color='steelblue')
+    axes[1].axhline(2.4,  color='red', linestyle='--', linewidth=0.8)
+    axes[1].axhline(-2.4, color='red', linestyle='--', linewidth=0.8)
+    axes[1].set_ylabel('Cart position (m)')
+    axes[1].set_title('Cart position — watch it drift')
+
+    axes[2].plot(steps, history['force'], color='green')
+    axes[2].set_ylabel('Force (N)')
+    axes[2].set_xlabel('Step')
+    axes[2].set_title('PID controller output')
+
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == '__main__':
+    env = CartPoleEnv()
+    controller = PIDController(Kp=50.0, Kd=10.0, Ki=1.0)
+
+    history = run_episode(env, controller, max_steps=500, render=True)
+    plot_history(history)
