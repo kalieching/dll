@@ -29,6 +29,7 @@ The art of classical control is tuning Kp, Kd, Ki.
 """
 
 import numpy as np
+from pid import PIDController
 
 # Physics
 class CartPoleEnv:
@@ -93,8 +94,35 @@ class CartPoleEnv:
         return self.state.copy(), reward, termination
 
 # Run
-def run():
-    pass
+def run_episode(env, controller, max_steps=500, render=True):
+    state = env.reset()
+    controller.reset()
+
+    history = {
+        'x': [],
+        'x_dot': [],
+        'theta': [],
+        'theta_dot': [],
+        'force': [],
+        'reward': [],
+    }
+
+    for step in range(max_steps):
+        x, x_dot, theta, theta_dot = state
+        force = controller.compte(theta, theta_dot)
+        state, reward, terminated = env.step(force)
+
+        history['x'].append(x)
+        history['x_dot'].append(x_dot)
+        history['theta'].append(theta)
+        history['theta_dot'].append(theta_dot)
+        history['force'].append(force)
+        history['reward'].append(reward)
+
+
+        if terminated:
+            break
+    return history
 
 # Visualize
 def visualization():
