@@ -92,12 +92,6 @@ class CartPoleEnv:
 
         return self.state.copy(), reward, termination
 
-
-# PID Controller
-class PIDController():
-    def __init__():
-        pass
-
 # Run
 def run():
     pass

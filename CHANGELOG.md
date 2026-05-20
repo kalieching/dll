@@ -57,3 +57,17 @@ Background
 
 Attention Scoring Functions
 - Distance functions are more expensive to compute than dot products
+
+#### 05-19-2026
+
+Started soft-actor critic policy implementation from scratch.
+
+#### 5-20-2026
+
+Started classical PID controller and cart-pole application from scratch. The goal is to create a library of algorithms and models that I personally manually implemented and can pull in for other projects.
+
+Next goals:
+- Finish classical PID controller
+- Create an RL controller for cart-pole
+- Finish SAC policy
+- Design an interface to plug and play my personally implemented models
