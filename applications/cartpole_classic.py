@@ -29,9 +29,16 @@ The art of classical control is tuning Kp, Kd, Ki.
 """
 
 import numpy as np
+<<<<<<< HEAD
 from controllers.pid import PIDController
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+=======
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from pid import PIDController
+import matplotlib.pyplot as plt
+>>>>>>> 62b0279 (Add visualization, run function, and fix small bug)
 
 # Physics
 class CartPoleEnv:
@@ -84,7 +91,7 @@ class CartPoleEnv:
         x = x + x_dot * self.DT
         x_dot = x_dot + x_acc * self.DT
         theta = theta + theta_dot * self.DT
-        theta_dot = theta_dot * theta_acc * self.DT
+        theta_dot = theta_dot + theta_acc * self.DT
 
         self.state = np.array([x, x_dot, theta, theta_dot])
 
@@ -96,6 +103,7 @@ class CartPoleEnv:
         return self.state.copy(), reward, termination
 
 # Run
+<<<<<<< HEAD
 def run_episode(env, controller, max_steps=500, render=True):
     state = env.reset()
     controller.reset()
@@ -229,3 +237,99 @@ if __name__ == '__main__':
 
     history = run_episode(env, controller, max_steps=500, render=True)
     plot_history(history)
+=======
+def run():
+    env = CartPoleEnv()
+    pid = PIDController(
+        Kp=50.0,
+        Ki=0.0,
+        Kd=5.0
+    )
+    env.reset()
+    pid.reset()
+
+    total_reward = 0.0
+    history = []
+    for _ in range(1000):
+        x, x_dot, theta, theta_dot = env.state # error is theta
+        force = pid.compute(theta, env.DT)
+        state, reward, done = env.step(force)
+        total_reward += reward
+        history.append(state)
+        if done:
+            break
+    return history, total_reward
+
+
+# Visualize
+def visualization():
+    from matplotlib.animation import FuncAnimation
+    from matplotlib.patches import Rectangle
+    from matplotlib.gridspec import GridSpec
+
+    history, total_reward = run()
+    history = np.array(history)
+    t = np.arange(len(history)) * CartPoleEnv.DT
+
+    POLE_LEN = CartPoleEnv.HALF_LEN * 2
+    CART_W, CART_H = 0.4, 0.2
+    PIVOT_Y = CART_H / 2
+
+    fig = plt.figure(figsize=(14, 5))
+    fig.suptitle(f"CartPole PID — steps survived: {len(history)}, reward: {total_reward:.0f}")
+    gs = GridSpec(2, 2, figure=fig)
+
+    # Animation (left, spans both rows)
+    ax_anim = fig.add_subplot(gs[:, 0])
+    ax_anim.set_xlim(-CartPoleEnv.MAX_POS - 0.5, CartPoleEnv.MAX_POS + 0.5)
+    ax_anim.set_ylim(-0.5, POLE_LEN + 0.5)
+    ax_anim.set_aspect('equal')
+    ax_anim.axhline(0, color='gray', linewidth=0.8)
+    ax_anim.axvline(CartPoleEnv.MAX_POS, color='red', linestyle='--', linewidth=0.8)
+    ax_anim.axvline(-CartPoleEnv.MAX_POS, color='red', linestyle='--', linewidth=0.8)
+
+    cart = Rectangle((-CART_W / 2, -CART_H / 2), CART_W, CART_H, color='steelblue')
+    ax_anim.add_patch(cart)
+    pole_line, = ax_anim.plot([], [], 'o-', color='saddlebrown', linewidth=3, markersize=6)
+    time_text = ax_anim.text(0.02, 0.95, '', transform=ax_anim.transAxes)
+
+    # Theta plot (top right)
+    ax_theta = fig.add_subplot(gs[0, 1])
+    ax_theta.plot(t, history[:, 2])
+    ax_theta.axhline(0, color='gray', linestyle='--', linewidth=0.8)
+    ax_theta.axhline(CartPoleEnv.MAX_ANGLE, color='red', linestyle='--', linewidth=0.8, label='limit')
+    ax_theta.axhline(-CartPoleEnv.MAX_ANGLE, color='red', linestyle='--', linewidth=0.8)
+    ax_theta.set_ylabel("Pole angle (rad)")
+    ax_theta.legend()
+    theta_vline = ax_theta.axvline(0, color='black', linewidth=0.8)
+
+    # Position plot (bottom right)
+    ax_pos = fig.add_subplot(gs[1, 1])
+    ax_pos.plot(t, history[:, 0])
+    ax_pos.axhline(CartPoleEnv.MAX_POS, color='red', linestyle='--', linewidth=0.8, label='limit')
+    ax_pos.axhline(-CartPoleEnv.MAX_POS, color='red', linestyle='--', linewidth=0.8)
+    ax_pos.set_ylabel("Cart position (m)")
+    ax_pos.set_xlabel("Time (s)")
+    ax_pos.legend()
+    pos_vline = ax_pos.axvline(0, color='black', linewidth=0.8)
+
+    def update(frame):
+        x, _, theta, _ = history[frame]
+        cart.set_xy((x - CART_W / 2, -CART_H / 2))
+        tip_x = x + POLE_LEN * np.sin(theta)
+        tip_y = PIVOT_Y + POLE_LEN * np.cos(theta)
+        pole_line.set_data([x, tip_x], [PIVOT_Y, tip_y])
+        time_text.set_text(f't = {frame * CartPoleEnv.DT:.2f}s')
+        theta_vline.set_xdata([t[frame], t[frame]])
+        pos_vline.set_xdata([t[frame], t[frame]])
+        return cart, pole_line, time_text, theta_vline, pos_vline
+
+    ani = FuncAnimation(fig, update, frames=len(history), interval=CartPoleEnv.DT * 1000, blit=True)
+    plt.tight_layout()
+    plt.show()
+    return ani
+
+
+if __name__ == "__main__":
+    visualization()
+>>>>>>> 62b0279 (Add visualization, run function, and fix small bug)
